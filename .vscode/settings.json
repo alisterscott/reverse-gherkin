@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[liquid]": {
+    "editor.formatOnSave": false
+  },
+  "editor.tabSize": 2,
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "js/ts.preferences.quoteStyle": "single",
+  "playwright.env": {}
+}
