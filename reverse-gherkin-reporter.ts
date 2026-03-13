@@ -15,11 +15,18 @@ type CapturedStep = {
   status: StepStatus;
 };
 
+type CapturedAnnotation = {
+  type: string;
+  description?: string;
+};
+
 type CapturedTest = {
   feature: string;
   testTitle: string;
   project: string;
   status: TestResult['status'];
+  tags: string[];
+  annotations: CapturedAnnotation[];
   steps: CapturedStep[];
 };
 
@@ -30,7 +37,7 @@ type ReverseGherkinReporterOptions = {
 class ReverseGherkinReporter implements Reporter {
   private outputFile: string;
   private testAttempts = new Map<string, CapturedStep[]>();
-  private finalTests = new Map<string, CapturedTest>();
+  private finalTests: CapturedTest[] = [];
   private featureOrder: string[] = [];
   private featureSet = new Set<string>();
 
@@ -40,7 +47,7 @@ class ReverseGherkinReporter implements Reporter {
   }
 
   onTestBegin(test: TestCase, result: TestResult): void {
-    const attemptKey = this.getAttemptKey(test, result.retry);
+    const attemptKey = this.getAttemptKey(test, result);
     this.testAttempts.set(attemptKey, []);
   }
 
@@ -50,7 +57,7 @@ class ReverseGherkinReporter implements Reporter {
       return;
     }
 
-    const attemptKey = this.getAttemptKey(test, result.retry);
+    const attemptKey = this.getAttemptKey(test, result);
     const steps = this.testAttempts.get(attemptKey) || [];
     steps.push({
       title: step.title,
@@ -60,19 +67,22 @@ class ReverseGherkinReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
-    const attemptKey = this.getAttemptKey(test, result.retry);
+    const attemptKey = this.getAttemptKey(test, result);
     const feature = this.getFeatureTitle(test);
+    const project = this.getProjectName(test);
 
     if (!this.featureSet.has(feature)) {
       this.featureSet.add(feature);
       this.featureOrder.push(feature);
     }
 
-    this.finalTests.set(test.id, {
+    this.finalTests.push({
       feature,
       testTitle: test.title,
-      project: this.getProjectName(test),
+      project,
       status: result.status,
+      tags: test.tags,
+      annotations: test.annotations,
       steps: this.testAttempts.get(attemptKey) || [],
     });
   }
@@ -80,7 +90,7 @@ class ReverseGherkinReporter implements Reporter {
   async onEnd(): Promise<void> {
     const featureToTests = new Map<string, CapturedTest[]>();
 
-    for (const testData of this.finalTests.values()) {
+    for (const testData of this.finalTests) {
       if (!featureToTests.has(testData.feature)) {
         featureToTests.set(testData.feature, []);
       }
@@ -106,6 +116,22 @@ class ReverseGherkinReporter implements Reporter {
           `## ${testData.testTitle} ${testEmoji} \`${testData.project}\``
         );
         lines.push('');
+
+        if (testData.tags.length > 0) {
+          lines.push(testData.tags.join(' '));
+          lines.push('');
+        }
+
+        if (testData.annotations.length > 0) {
+          for (const annotation of testData.annotations) {
+            const desc = annotation.description
+              ? `: ${annotation.description}`
+              : '';
+            lines.push(`**${annotation.type}**${desc}`);
+          }
+          lines.push('');
+        }
+
         lines.push('```text');
 
         if (testData.steps.length === 0) {
@@ -139,8 +165,9 @@ class ReverseGherkinReporter implements Reporter {
     return 'unknown';
   }
 
-  private getAttemptKey(test: TestCase, retry: number): string {
-    return `${test.id}#${retry}`;
+  private getAttemptKey(test: TestCase, result: TestResult): string {
+    const project = this.getProjectName(test);
+    return `${project}::${test.id}#${result.retry}`;
   }
 
   private getFeatureTitle(test: TestCase): string {
