@@ -1,0 +1,26 @@
+{
+  "name": "reverse-gherkin",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/alisterscott/reverse-gherkin#readme",
+  "bugs": {
+    "url": "https://github.com/alisterscott/reverse-gherkin/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alisterscott/reverse-gherkin.git"
+  },
+  "license": "MIT",
+  "author": "@alisterscott",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.5.0",
+    "playwright": "^1.58.2",
+    "prettier": "3.8.1"
+  }
+}
