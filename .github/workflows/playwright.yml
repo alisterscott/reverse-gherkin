@@ -20,9 +20,19 @@ jobs:
         run: npx playwright install --with-deps
       - name: Run Playwright tests
         run: npx playwright test
-      - uses: actions/upload-artifact@v6
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+      - name: Append Reverse Gherkin Markdown Report to GitHub Summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f test-results/reverse-gherkin.md ]; then
+            echo "Appending Reverse Gherkin report to GitHub Summary..."
+            cat test-results/reverse-gherkin.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No Reverse Gherkin report found at test-results/reverse-gherkin.md" >> $GITHUB_STEP_SUMMARY
+          fi
