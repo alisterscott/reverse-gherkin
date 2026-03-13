@@ -32,10 +32,12 @@ type CapturedTest = {
 
 type ReverseGherkinReporterOptions = {
   outputFile?: string;
+  includeAnnotations?: boolean;
 };
 
 class ReverseGherkinReporter implements Reporter {
   private outputFile: string;
+  private includeAnnotations: boolean;
   private testAttempts = new Map<string, CapturedStep[]>();
   private finalTests: CapturedTest[] = [];
   private featureOrder: string[] = [];
@@ -44,6 +46,7 @@ class ReverseGherkinReporter implements Reporter {
   constructor(options: ReverseGherkinReporterOptions = {}) {
     this.outputFile =
       options.outputFile || path.join('test-results', 'reverse-gherkin.md');
+    this.includeAnnotations = options.includeAnnotations ?? true;
   }
 
   onTestBegin(test: TestCase, result: TestResult): void {
@@ -70,6 +73,8 @@ class ReverseGherkinReporter implements Reporter {
     const attemptKey = this.getAttemptKey(test, result);
     const feature = this.getFeatureTitle(test);
     const project = this.getProjectName(test);
+    const titleTags = this.getTitleTags(test.title);
+    const mergedTags = [...new Set([...test.tags, ...titleTags])];
 
     if (!this.featureSet.has(feature)) {
       this.featureSet.add(feature);
@@ -78,10 +83,10 @@ class ReverseGherkinReporter implements Reporter {
 
     this.finalTests.push({
       feature,
-      testTitle: test.title,
+      testTitle: this.getDisplayTestTitle(test.title),
       project,
       status: result.status,
-      tags: test.tags,
+      tags: mergedTags,
       annotations: test.annotations,
       steps: this.testAttempts.get(attemptKey) || [],
     });
@@ -112,23 +117,14 @@ class ReverseGherkinReporter implements Reporter {
 
       for (const testData of tests) {
         const testEmoji = this.getTestEmoji(testData.status);
-        lines.push(
-          `## ${testData.testTitle} ${testEmoji} \`${testData.project}\``
-        );
+        const testTitle = this.includeAnnotations
+          ? `## ${testData.testTitle} ${testEmoji}`
+          : `## ${testData.testTitle} ${testEmoji} \`${testData.project}\``;
+        lines.push(testTitle);
         lines.push('');
 
-        if (testData.tags.length > 0) {
-          lines.push(testData.tags.join(' '));
-          lines.push('');
-        }
-
-        if (testData.annotations.length > 0) {
-          for (const annotation of testData.annotations) {
-            const desc = annotation.description
-              ? `: ${annotation.description}`
-              : '';
-            lines.push(`**${annotation.type}**${desc}`);
-          }
+        if (this.includeAnnotations) {
+          this.appendMetadataTable(lines, testData);
           lines.push('');
         }
 
@@ -153,6 +149,35 @@ class ReverseGherkinReporter implements Reporter {
     fs.writeFileSync(outputPath, `${lines.join('\n')}\n`, 'utf8');
   }
 
+  private appendMetadataTable(lines: string[], testData: CapturedTest): void {
+    const rows: Array<{ key: string; value: string }> = [];
+    rows.push({ key: 'Project', value: `\`${testData.project}\`` });
+
+    if (testData.tags.length > 0) {
+      rows.push({
+        key: '**Tags**',
+        value: testData.tags.map((tag) => `\`${tag}\``).join(' '),
+      });
+    }
+
+    for (const annotation of testData.annotations) {
+      rows.push({
+        key: `**${annotation.type}**`,
+        value: annotation.description || '',
+      });
+    }
+
+    if (rows.length === 0) {
+      return;
+    }
+
+    lines.push(`| ${rows[0].key} | ${rows[0].value} |`);
+    lines.push('| --------------- | ----------------------- |');
+    for (let i = 1; i < rows.length; i += 1) {
+      lines.push(`| ${rows[i].key} | ${rows[i].value} |`);
+    }
+  }
+
   private getProjectName(test: TestCase): string {
     let current: Suite | undefined = test.parent;
     while (current) {
@@ -168,6 +193,30 @@ class ReverseGherkinReporter implements Reporter {
   private getAttemptKey(test: TestCase, result: TestResult): string {
     const project = this.getProjectName(test);
     return `${project}::${test.id}#${result.retry}`;
+  }
+
+  private getTitleTags(title: string): string[] {
+    const tags = title.match(/@[A-Za-z0-9:_-]+/g) || [];
+    return [...new Set(tags)];
+  }
+
+  private getDisplayTestTitle(title: string): string {
+    const titleTags = this.getTitleTags(title);
+    let cleanedTitle = title;
+
+    for (const tag of titleTags) {
+      cleanedTitle = cleanedTitle.replace(
+        new RegExp(`(^|\\s)${this.escapeRegExp(tag)}(?=\\s|$)`, 'g'),
+        ' '
+      );
+    }
+
+    cleanedTitle = cleanedTitle.replace(/\s+/g, ' ').trim();
+    return cleanedTitle || title;
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private getFeatureTitle(test: TestCase): string {

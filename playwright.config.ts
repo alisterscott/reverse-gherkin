@@ -27,7 +27,10 @@ export default defineConfig({
     ['html'],
     [
       './reverse-gherkin-reporter.ts',
-      { outputFile: 'test-results/reverse-gherkin.md' },
+      {
+        outputFile: 'test-results/reverse-gherkin.md',
+        includeAnnotations: true,
+      },
     ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

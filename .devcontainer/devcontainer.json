@@ -7,5 +7,12 @@
       "webPort": "6080"
     },
     "git-lfs": "latest"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bierner.markdown-preview-github-styles"
+      ]
+    }
   }
 }
