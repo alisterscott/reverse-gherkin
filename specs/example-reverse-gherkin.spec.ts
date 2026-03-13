@@ -13,7 +13,7 @@ test.describe('Playwright Homepage', () => {
     });
   });
 
-  test.skip('As a visitor to the homepage I can navigate to the get started page to see installation instructions', async ({
+  test('As a visitor to the homepage I can navigate to the get started page to see installation instructions', async ({
     page,
   }) => {
     await test.step('Given I visit the Playwright homepage', async () => {

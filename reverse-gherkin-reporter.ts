@@ -18,6 +18,7 @@ type CapturedStep = {
 type CapturedTest = {
   feature: string;
   testTitle: string;
+  project: string;
   status: TestResult['status'];
   steps: CapturedStep[];
 };
@@ -70,6 +71,7 @@ class ReverseGherkinReporter implements Reporter {
     this.finalTests.set(test.id, {
       feature,
       testTitle: test.title,
+      project: this.getProjectName(test),
       status: result.status,
       steps: this.testAttempts.get(attemptKey) || [],
     });
@@ -100,7 +102,9 @@ class ReverseGherkinReporter implements Reporter {
 
       for (const testData of tests) {
         const testEmoji = this.getTestEmoji(testData.status);
-        lines.push(`## ${testData.testTitle} ${testEmoji}`);
+        lines.push(
+          `## ${testData.testTitle} ${testEmoji} \`${testData.project}\``
+        );
         lines.push('');
         lines.push('```text');
 
@@ -121,6 +125,18 @@ class ReverseGherkinReporter implements Reporter {
     const outputPath = path.resolve(this.outputFile);
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, `${lines.join('\n')}\n`, 'utf8');
+  }
+
+  private getProjectName(test: TestCase): string {
+    let current: Suite | undefined = test.parent;
+    while (current) {
+      const project = current.project();
+      if (project) {
+        return project.name;
+      }
+      current = current.parent;
+    }
+    return 'unknown';
   }
 
   private getAttemptKey(test: TestCase, retry: number): string {
