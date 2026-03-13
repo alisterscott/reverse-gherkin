@@ -29,7 +29,7 @@ export default defineConfig({
       './reverse-gherkin-reporter.ts',
       {
         outputFile: 'test-results/reverse-gherkin.md',
-        includeAnnotations: true,
+        includeAnnotations: false,
       },
     ],
   ],
