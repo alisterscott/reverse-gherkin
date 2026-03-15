@@ -1,4 +1,4 @@
-# Reverse Gherkin
+# Reverse Gherkin 🥒
 
 **Reverse Gherkin**: write your Playwright specs as code and get plain language business readable specs on GitHub when you run them.
 
